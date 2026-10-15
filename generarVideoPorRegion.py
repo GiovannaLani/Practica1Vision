@@ -150,6 +150,27 @@ def keepFigures(figures, frame):
                 frame[y, startX:endX] = originalFrame[y, startX:endX]
 
 
+def hideFigure(figure, frame, color=(0, 0, 0)):
+    if len(figure) < 3:
+        return
+
+    height, width = frame.shape[:2]
+    for y in range(height):
+        crossings = []
+        for i in range(len(figure)):
+            x1, y1 = figure[i]
+            x2, y2 = figure[(i + 1) % len(figure)]
+            if (y1 > y) != (y2 > y):
+                crossingX = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+                crossings.append(crossingX)
+
+        crossings.sort()
+        for i in range(0, len(crossings) - 1, 2):
+            startX = max(0, math.ceil(crossings[i]))
+            endX = min(width, math.ceil(crossings[i + 1]))
+            frame[y, startX:endX] = color
+
+
 def generateHiddenVideo():
     saveCurrentFrameRegions()
     outputCapture = cv2.VideoCapture("Video Práctica.mp4")
@@ -184,6 +205,48 @@ def generateHiddenVideo():
         raise RuntimeError("El vídeo no contiene fotogramas: Video Práctica.mp4")
 
     print(f"Vídeo completo guardado en MyOutputVid.avi ({processedFrames} fotogramas).")
+
+
+def generateVideoWithHiddenFigures():
+    saveCurrentFrameRegions()
+    outputCapture = cv2.VideoCapture("Video Práctica.mp4")
+    if not outputCapture.isOpened():
+        raise RuntimeError("No se pudo abrir el vídeo: Video Práctica.mp4")
+
+    outputPath = "VideoRegionesEnNegro.avi"
+    outputWriter = cv2.VideoWriter(
+        outputPath,
+        cv2.VideoWriter_fourcc('I', '4', '2', '0'),
+        fps,
+        size
+    )
+    if not outputWriter.isOpened():
+        outputCapture.release()
+        raise RuntimeError(f"No se pudo crear el vídeo: {outputPath}")
+
+    processedFrames = 0
+    try:
+        while True:
+            success, outputFrame = outputCapture.read()
+            if not success:
+                break
+
+            for figure in getFiguresForFrame(processedFrames):
+                hideFigure(figure, outputFrame)
+
+            outputWriter.write(outputFrame)
+            processedFrames += 1
+    finally:
+        outputCapture.release()
+        outputWriter.release()
+
+    if processedFrames == 0:
+        raise RuntimeError("El vídeo no contiene fotogramas: Video Práctica.mp4")
+
+    print(
+        f"Vídeo con las figuras en negro guardado en {outputPath} "
+        f"({processedFrames} fotogramas)."
+    )
 
 
 def generateVideosByRegion():
@@ -292,6 +355,8 @@ while success:
         generateHiddenVideo()
     elif key in (ord('m'), ord('M')):
         generateVideosByRegion()
+    elif key in (ord('l'), ord('L')):
+        generateVideoWithHiddenFigures()
 
     frame_ui = frame.copy()
 
