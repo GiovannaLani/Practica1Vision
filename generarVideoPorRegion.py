@@ -340,6 +340,12 @@ while success:
         changeFrame(-1)
     elif key == ord('a'):
         changeFrame(-int(fps))
+    elif key == 26:  # Ctrl+Z
+        if points:
+            points.pop()
+        elif figures:
+            points.extend(figures.pop()[:-1])
+            saveCurrentFrameRegions()
     elif key == ord('q'):
         break
 
