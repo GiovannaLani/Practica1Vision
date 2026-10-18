@@ -116,7 +116,12 @@ def generateVideoByFigures(fps, size):
             frameWithFigure = originalFrame.copy()
 
             points = figuresAtFrame.get(figureId)
-            figuresToKeep = [points] if points is not None else []
+
+            if points is None:
+                continue
+
+            figuresToKeep = [points]
+
             keepFigures(figuresToKeep, frameWithFigure)
  
             writer.write(frameWithFigure[minY:maxY + 1, minX:maxX + 1])
