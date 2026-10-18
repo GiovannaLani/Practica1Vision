@@ -81,7 +81,6 @@ def getPolygonSpans(figure, width, height):
     return spans
 
 #TODO Si la figura el tamaño del frame es del recorrido en vez de la figura
-#TODO si la figura se oculta no añadir frame
 def generateVideoByFigures(fps, size):
     inputVideo = cv2.VideoCapture(config.VIDEO_NAME)
 
