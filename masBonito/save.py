@@ -80,7 +80,6 @@ def getPolygonSpans(figure, width, height):
  
     return spans
 
-#TODO Si la figura el tamaño del frame es del recorrido en vez de la figura
 def generateVideoByFigures(fps, size):
     inputVideo = cv2.VideoCapture(config.VIDEO_NAME)
 
@@ -94,15 +93,14 @@ def generateVideoByFigures(fps, size):
             points = data[1]
             pointsKeyframes[frameId] = points
 
-        figureBounds = getFigureBounds(pointsKeyframes, size)
+        figureBounds = getFigureBounds(pointsKeyframes)
         
         if figureBounds is None:
             continue
         
-        minX, maxX, minY, maxY = figureBounds
         bounds[figureId] = figureBounds
 
-        writers[figureId] = cv2.VideoWriter(config.REGION_VIDEO_PATTERN.format(figureId), cv2.VideoWriter_fourcc('I', '4', '2', '0'), fps, (maxX - minX + 1, maxY - minY + 1))
+        writers[figureId] = cv2.VideoWriter(config.REGION_VIDEO_PATTERN.format(figureId), cv2.VideoWriter_fourcc('I', '4', '2', '0'), fps, figureBounds)
 
     frameIndex = 0
     success, originalFrame = inputVideo.read()
@@ -111,19 +109,17 @@ def generateVideoByFigures(fps, size):
         figuresAtFrame = figures.getFiguresAtFrame(frameIndex)
 
         for figureId, writer in writers.items():
-            minX, maxX, minY, maxY = bounds[figureId]
-            frameWithFigure = originalFrame.copy()
-
             points = figuresAtFrame.get(figureId)
 
             if points is None:
                 continue
 
+            frameWithFigure = originalFrame.copy()
             figuresToKeep = [points]
 
             keepFigures(figuresToKeep, frameWithFigure)
  
-            writer.write(frameWithFigure[minY:maxY + 1, minX:maxX + 1])
+            writer.write(centerFigure(frameWithFigure, points, bounds[figureId]))
 
         frameIndex += 1
         success, originalFrame = inputVideo.read()
@@ -135,9 +131,9 @@ def generateVideoByFigures(fps, size):
 
     print("VIDEOS DE FIGURAS GUARDADOS" + ", ".join([config.REGION_VIDEO_PATTERN.format(figureId) for figureId in writers.keys()]))
 
-def getFigureBounds(keyframes, frameSize):
-    minX, maxX = frameSize[0] - 1, 0
-    minY, maxY = frameSize[1] - 1, 0
+def getFigureBounds(keyframes):
+    maxWidth = 0
+    maxHeight = 0
     found = False
  
     for points in keyframes.values():
@@ -145,13 +141,23 @@ def getFigureBounds(keyframes, frameSize):
             continue
         xs = [point[0] for point in points]
         ys = [point[1] for point in points]
-        minX = min(minX, min(xs))
-        maxX = max(maxX, max(xs))
-        minY = min(minY, min(ys))
-        maxY = max(maxY, max(ys))
+        maxWidth = max(maxWidth, max(xs) - min(xs) + 1)
+        maxHeight = max(maxHeight, max(ys) - min(ys) + 1)
         found = True
  
     if not found:
         return None
  
-    return (max(minX, 0), min(maxX, frameSize[0] - 1), max(minY, 0), min(maxY, frameSize[1] - 1))
+    return maxWidth, maxHeight
+
+def centerFigure(frame, points, outputSize):
+    minX = min(point[0] for point in points)
+    maxX = max(point[0] for point in points)
+    minY = min(point[1] for point in points)
+    maxY = max(point[1] for point in points)
+    center = (
+        (minX + maxX) / 2,
+        (minY + maxY) / 2,
+    )
+
+    return cv2.getRectSubPix(frame, outputSize, center)
